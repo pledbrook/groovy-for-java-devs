@@ -1,0 +1,16 @@
+apply plugin: "java"
+apply plugin: "application"
+
+mainClassName = "org.example.shares.App"
+
+if (project.hasProperty("cliArgs")) {
+    run.args project.cliArgs
+}
+
+repositories {
+    mavenLocal()
+}
+
+dependencies {
+    compile "org.codehaus.groovy:groovy-all:2.0.5"
+}

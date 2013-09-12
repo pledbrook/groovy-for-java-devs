@@ -1,0 +1,27 @@
+apply plugin: "groovy"
+
+version = "1.0"
+archivesBaseName = "stuff"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile "org.codehaus.groovy:groovy:2.1.7", "org.codehaus.groovy:groovy-test:2.1.7"
+    testCompile "org.spockframework:spock-core:0.7-groovy-2.0", "cglib:cglib-nodep:2.2.2"
+}
+
+sourceSets {
+    main {
+        groovy {
+            srcDir "src"
+        }
+    }
+
+    test {
+        groovy {
+            srcDir "test"
+        }
+    }
+}

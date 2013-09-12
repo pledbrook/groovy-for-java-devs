@@ -1,0 +1,27 @@
+apply plugin: "groovy"
+apply plugin: "application"
+
+version = "1.0"
+sourceCompatibility = "1.7"
+targetCompatibility = "1.7"
+
+mainClassName = "org.example.quicksort.QuickSortApp"
+
+/*
+compileGroovy.groovyOptions.with {
+    optimizationOptions = [ indy: true, 'int': false]
+    encoding = 'UTF-8'
+}
+*/
+
+if (project.hasProperty("cliArgs")) {
+    run.args project.cliArgs
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile "org.codehaus.groovy:groovy-all:2.1.7"
+}

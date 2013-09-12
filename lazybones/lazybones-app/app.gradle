@@ -1,0 +1,141 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        maven { url "http://dl.bintray.com/pledbrook/plugins" }
+    }
+
+    dependencies { classpath "uk.co.cacoethes:lazybones-gradle:1.0" }
+    dependencies { classpath "net.saliman:gradle-cobertura-plugin:1.1.2" }
+}
+
+import uk.co.cacoethes.gradle.tasks.BintrayGenericUpload
+
+apply plugin: "groovy"
+apply plugin: "application"
+apply plugin: "cobertura"
+apply plugin: "codenarc"
+
+applicationName = "lazybones"
+mainClassName = "uk.co.cacoethes.lazybones.LazybonesMain"
+version = "0.5-SNAPSHOT"
+
+sourceCompatibility = "1.6"
+targetCompatibility = "1.6"
+
+ext {
+    groovyVersion = "2.1.5"
+    installDir = new File(System.getProperty("user.home"), ".lazybones/templates")
+}
+
+sourceSets {
+    integTest {
+        groovy {
+            srcDir "src/integ/groovy"
+        }
+        resources {
+            srcDir "src/integ/resources"
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile "org.codehaus.groovy:groovy:${groovyVersion}"
+
+    compile "commons-io:commons-io:2.4",
+            "org.codehaus.groovy:groovy-templates:${groovyVersion}",
+            "org.apache.commons:commons-compress:1.5",
+            "com.github.groovy-wslite:groovy-wslite:0.7.2",
+            "net.sf.jopt-simple:jopt-simple:4.4"
+
+    testCompile "org.spockframework:spock-core:0.7-groovy-2.0"
+
+    integTestCompile "commons-io:commons-io:2.4",
+                     "org.spockframework:spock-core:0.7-groovy-2.0",
+                     "co.freeside:betamax:1.1.2"
+}
+
+task generateAppResources(type: GenerateProjectProperties) {
+    target = file("${sourceSets.main.output.classesDir}/uk/co/cacoethes/lazybones/lazybones.properties")
+}
+
+tasks.processResources.dependsOn generateAppResources
+
+task generateIntegTestResources(type: GenerateProjectProperties) {
+    target = file("${sourceSets.integTest.output.classesDir}/uk/co/cacoethes/lazybones/lazybones.properties")
+}
+
+//for a single test, you can run "gradle -DintegTests.single=<test name>"
+task integTests(type: Test) {
+    dependsOn ":lazybones-templates:installTemplateTestTmpl", "installApp", "generateIntegTestResources"
+
+    systemProperty "lazybones.testWorkDir", file("$buildDir/testWork").path
+    systemProperty "lazybones.installDir", installApp.destinationDir.path
+
+    testClassesDir = sourceSets.integTest.output.classesDir
+    classpath = sourceSets.integTest.runtimeClasspath
+
+    include "**/*Spec*"
+    exclude "**/Abstract*Spec*"
+}
+
+codenarc {
+    configFile = rootProject.file("codenarc.groovy")
+}
+codenarcTest.enabled = false
+codenarcIntegTest.enabled = false
+
+/** Cobertura (Coverage) Configuration */
+cobertura {
+    coverageFormats = ['html', 'xml']
+    coverageSourceDirs = sourceSets.main.allSource.srcDirs
+}
+
+distZip.dependsOn("test", "integTests")
+
+task uploadDist(type: BintrayGenericUpload, dependsOn: "distZip") {
+    artifactFile = distZip.archivePath
+    artifactUrlPath = "lazybones/$version/${distZip.archiveName}"
+}
+
+// Lazy initialisation of uploadDist task so that not all build users need to
+// set the repo.* project properties.
+gradle.taskGraph.whenReady { graph ->
+    if (graph.hasTask(":lazybones-app:uploadDist")) {
+        verifyProperty(project, 'repo.url')
+        verifyProperty(project, 'repo.username')
+        verifyProperty(project, 'repo.apiKey')
+
+        uploadDist.repositoryUrl = project.'repo.url'
+        uploadDist.username = project.'repo.username'
+        uploadDist.apiKey = project.'repo.apiKey'
+    }
+}
+
+void verifyProperty(Project proj, String name) {
+    if (!project.hasProperty(name)) {
+        throw new GradleException("You must define the project property '$name'")
+    }
+}
+
+/**
+ * Simple task that writes a selection of the project's build properties into
+ * a file. At the moment, only the Lazybones version gets written.
+ */
+class GenerateProjectProperties extends DefaultTask {
+    @OutputFile
+    File target
+
+    @TaskAction
+    void generate() {
+        def props = new Properties()
+        props.setProperty("lazybones.version", project.version)
+
+        target.withWriter { w ->
+            props.store(w, "Lazybones project properties")
+        }
+    }
+}
