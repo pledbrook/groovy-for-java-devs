@@ -1,6 +1,6 @@
 package org.example
 
-//import groovy.io.FileType
+import groovy.io.FileType
 
 if (args.size() == 0 || args.size() > 2) {
     usage()
@@ -11,8 +11,7 @@ def extension = args[0]
 def searchDir = new File(args.size() > 1 ? args[1] : '.')
 def count = 0
 
-def filesInDir = searchDir.listFiles()
-for (File f in filesInDir) {
+searchDir.traverse(type: FileType.FILES) { f ->
     if (new Filename(f).ext == extension) count++
 }
 
