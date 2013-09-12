@@ -7,4 +7,6 @@ println "Getting data..."
 def client = new RESTClient("http://maps.googleapis.com/maps/api/geocode/json")
 def response = client.get(query: [address: location, sensor: "false"])
 
-println response.json
+for (component in response.json.results*.address_components) {
+    println component*.long_name.join(', ')
+}
