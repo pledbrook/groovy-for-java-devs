@@ -1,7 +1,10 @@
 package org.example.shares;
 
 import groovy.lang.*;
+import org.codehaus.groovy.control.CompilerConfiguration;
+
 import java.io.*;
+import java.util.Collection;
 
 public class App {
     public static void main(String[] args) throws IOException {
@@ -13,23 +16,19 @@ public class App {
         String scriptContent = loadGroovyScript(args[0]);
 
         Binding binding = new Binding();
-        GroovyShell shell = createShell(binding);
-        shell.evaluate(scriptContent);
-
-        TradesDsl tradesDsl = new TradesDsl();
-        Closure c = (Closure) binding.getVariable("trades");
-        c.setDelegate(tradesDsl);
-        c.call();
+        GroovyShell shell = createShellWithCustomScript(binding);
+        TradesScript script = (TradesScript) shell.parse(scriptContent);
+        script.run();
 
         System.out.println("Result");
         System.out.println("------");
         System.out.println();
-        System.out.println(generateOutput(tradesDsl));
+        System.out.println(generateOutput(script.getHoldings()));
     }
     
-    private static String generateOutput(TradesDsl dsl) {
+    private static String generateOutput(Collection<StockHolding> holdings) {
         StringBuilder buffer = new StringBuilder();
-        for (StockHolding holding : dsl.getHoldings()) {
+        for (StockHolding holding : holdings) {
             buffer.append(holding.getEpic()).append(": ");
             buffer.append(holding.getQuantity()).append("\n");
         }
@@ -54,5 +53,11 @@ public class App {
 
     private static GroovyShell createShell(Binding binding) {
         return new GroovyShell(binding);
+    }
+
+    private static GroovyShell createShellWithCustomScript(Binding binding) {
+        CompilerConfiguration config = new CompilerConfiguration();
+        config.setScriptBaseClass("org.example.shares.TradesScript");
+        return new GroovyShell(binding, config);
     }
 }
